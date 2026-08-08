@@ -677,9 +677,43 @@ const Card = ({ title, children, right }) => (
   </div>
 );
 
+function RoleSplash({ theme, setTheme, onChoose }) {
+  const option = (role, title, copy) => (
+    <button onClick={() => onChoose(role)} style={{
+      minHeight: 190, padding: "28px 30px", textAlign: "left", cursor: "pointer",
+      border: `1px solid ${C.line}`, borderRadius: 12, background: C.card, color: C.ink,
+      boxShadow: "0 5px 22px rgba(0,0,0,0.18)", transition: "transform .12s ease, border-color .12s ease",
+    }}>
+      <div style={{ color: C.goldDark, fontSize: 11, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 16 }}>Open workspace</div>
+      <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 28, marginBottom: 9 }}>{title}</div>
+      <div style={{ color: C.mute, fontSize: 13.5, lineHeight: 1.55 }}>{copy}</div>
+      <div style={{ color: C.goldDark, fontWeight: 800, fontSize: 13, marginTop: 22 }}>Continue →</div>
+    </button>
+  );
+  return (
+    <div style={{ ...PALETTES[theme], minHeight: "100vh", background: C.paper, color: C.ink, fontFamily: "'Avenir Next', 'Segoe UI', system-ui, sans-serif", colorScheme: theme, display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.bar, padding: "18px 26px", display: "flex", alignItems: "center" }}>
+        <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 24, color: "var(--barText)" }}>Ledger Pilot</div>
+        <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="Toggle dark mode" style={{ marginLeft: "auto", background: "transparent", border: "1px solid var(--barMute)", borderRadius: 6, color: "var(--barText)", cursor: "pointer", padding: "4px 10px", fontSize: 14 }}>{theme === "dark" ? "☀" : "☾"}</button>
+      </div>
+      <div style={{ width: "min(820px, calc(100% - 40px))", margin: "auto", padding: "54px 0 80px" }}>
+        <div style={{ textAlign: "center", marginBottom: 30 }}>
+          <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 38, marginBottom: 9 }}>Choose your workspace</div>
+          <div style={{ color: C.mute, fontSize: 14 }}>Select how you use Ledger Pilot.</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          {option("owner", "Club Owner", "Open the complete settlement dashboard with Fish Tank, club accounting and running tabs.")}
+          {option("agent", "Agent", "Create collection tasks for selected clubs, players and reporting periods.")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ———————————————— Main ————————————————
 export default function App() {
   const [cfg, setCfg] = useState(DEFAULT_CONFIG);
+  const [portal, setPortal] = useState(null);
   const [players, setPlayers] = useState(null);
   const [period, setPeriod] = useState("");
   const [weekAdj, setWeekAdj] = useState({});
@@ -766,35 +800,46 @@ export default function App() {
 
   const theme = cfg.theme === "dark" ? "dark" : "light";
 
+  if (!portal) return <RoleSplash theme={theme} setTheme={(next) => up({ theme: next })} onChoose={(role) => {
+    if (role === "owner" && cfg.mode === "collector") up({ mode: "fishtank" });
+    setPortal(role);
+  }} />;
+
   return (
     <div style={{ ...PALETTES[theme], minHeight: "100vh", background: C.paper, color: C.ink, fontFamily: "'Avenir Next', 'Segoe UI', system-ui, sans-serif", colorScheme: theme }}>
       <div style={{ background: C.bar, padding: "18px 26px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 24, color: "var(--barText)" }}>
-          All In Fish Tank <span style={{ color: "var(--barGold)", fontSize: 15 }}>· weekly settlements</span>
-        </div>
+        <button type="button" onClick={() => setPortal(null)} aria-label="Return to workspace selection" title="Back to workspace selection" style={{
+          border: "none", padding: 0, background: "transparent", cursor: "pointer", textAlign: "left",
+          fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 24, color: "var(--barText)",
+        }}>
+          Ledger Pilot <span style={{ color: "var(--barGold)", fontSize: 15 }}>· {portal === "agent" ? "agent data" : "weekly settlements"}</span>
+        </button>
         <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.08)", borderRadius: 7, padding: 3 }}>
-          {[["fishtank", "Fish Tank"], ["agent", "My Clubs"], ["tabs", "Tabs"]].map(([k, label]) => (
+          {(portal === "agent" ? [["collector", "Data Tasks"]] : [["fishtank", "Fish Tank"], ["agent", "My Clubs"], ["tabs", "Tabs"]]).map(([k, label]) => (
             <button key={k} onClick={() => up({ mode: k })} style={{
               border: "none", cursor: "pointer", borderRadius: 5, padding: "5px 14px", fontSize: 12.5, fontWeight: 700,
-              background: (cfg.mode || "fishtank") === k ? "var(--gold)" : "transparent",
-              color: (cfg.mode || "fishtank") === k ? "var(--onGold)" : "var(--barMute)" }}>
+              background: portal === "agent" || (cfg.mode || "fishtank") === k ? "var(--gold)" : "transparent",
+              color: portal === "agent" || (cfg.mode || "fishtank") === k ? "var(--onGold)" : "var(--barMute)" }}>
               {label}
             </button>
           ))}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-          {(cfg.mode || "fishtank") === "fishtank" && period && <span style={{ color: "var(--barMute)", fontSize: 12.5 }}>{period}{finalized ? " · finalized" : ""}</span>}
+          {portal === "owner" && (cfg.mode || "fishtank") === "fishtank" && period && <span style={{ color: "var(--barMute)", fontSize: 12.5 }}>{period}{finalized ? " · finalized" : ""}</span>}
+          <button onClick={() => setPortal(null)} style={{ background: "transparent", border: "none", color: "var(--barMute)", cursor: "pointer", fontSize: 12.5 }}>Choose role</button>
           <button onClick={() => up({ theme: theme === "dark" ? "light" : "dark" })} title="Toggle dark mode"
             style={{ background: "transparent", border: "1px solid var(--barMute)", borderRadius: 6, color: "var(--barText)", cursor: "pointer", padding: "4px 10px", fontSize: 14 }}>
             {theme === "dark" ? "☀" : "☾"}
           </button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
-          {(cfg.mode || "fishtank") === "fishtank" && <Btn tone="gold" small onClick={() => fileRef.current?.click()}>Upload weekly export</Btn>}
+          {portal === "owner" && (cfg.mode || "fishtank") === "fishtank" && <Btn tone="gold" small onClick={() => fileRef.current?.click()}>Upload weekly export</Btn>}
         </div>
       </div>
 
-      {(cfg.mode || "fishtank") === "agent" ? (
+      {portal === "agent" ? (
+        <DataTasks />
+      ) : (cfg.mode || "fishtank") === "agent" ? (
         <AgentClubs theme={theme} />
       ) : (cfg.mode || "fishtank") === "tabs" ? (
         <TabsLedger />
@@ -2318,6 +2363,159 @@ async function downloadAgentWorkbook(model, wk) {
     xMoney(cr.getCell(7), c.clubSettlement, { bold: true });
   });
   await saveWb(wb, `MyClubs_${wk.replace(/[^\d]/g, "_").replace(/^_+|_+$/g, "") || "week"}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════════════
+// DATA TASKS — configure read-only ClubGG collection jobs
+// ════════════════════════════════════════════════════════════════
+
+const DATA_TASKS_KEY = "clubgg-data-tasks-v1";
+const TASK_FIELDS = [["hands", "Hands"], ["rake", "Rake"], ["pnl", "P&L"]];
+const isoDate = (d = new Date()) => {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const shiftedDate = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return isoDate(d); };
+
+async function loadDataTasks() {
+  try {
+    const saved = await store.get(DATA_TASKS_KEY);
+    if (saved?.value) return JSON.parse(saved.value);
+  } catch (e) {}
+  return [];
+}
+
+function DataTasks() {
+  const [agent, setAgent] = useState(AGENT_DEFAULT);
+  const [tasks, setTasks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState("");
+  const [clubIds, setClubIds] = useState([]);
+  const [playerIds, setPlayerIds] = useState([]);
+  const [fields, setFields] = useState(TASK_FIELDS.map(([k]) => k));
+  const [range, setRange] = useState("custom");
+  const [from, setFrom] = useState(shiftedDate(-3));
+  const [to, setTo] = useState(isoDate());
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await store.get("agentclubs-v3");
+        if (saved?.value) setAgent(normalizeAgent({ ...AGENT_DEFAULT, ...JSON.parse(saved.value) }));
+      } catch (e) {}
+      setTasks(await loadDataTasks());
+      setLoaded(true);
+    })();
+  }, []);
+
+  const selectedClubs = agent.clubs.filter((c) => clubIds.includes(c.id));
+  const availablePlayers = selectedClubs.flatMap((c) => c.players.map((p) => ({ ...p, clubId: c.id, clubName: c.name })));
+  const selectedPlayers = availablePlayers.filter((p) => playerIds.includes(p.id));
+
+  const chooseRange = (value) => {
+    setRange(value);
+    if (value === "today") { setFrom(isoDate()); setTo(isoDate()); }
+    if (value === "past7") { setFrom(shiftedDate(-6)); setTo(isoDate()); }
+  };
+  const toggleClub = (id) => {
+    const on = clubIds.includes(id);
+    setClubIds(on ? clubIds.filter((x) => x !== id) : [...clubIds, id]);
+    if (on) {
+      const removed = new Set((agent.clubs.find((c) => c.id === id)?.players || []).map((p) => p.id));
+      setPlayerIds(playerIds.filter((pid) => !removed.has(pid)));
+    }
+  };
+  const saveTask = async () => {
+    setError("");
+    if (!clubIds.length) return setError("Select at least one club.");
+    if (!playerIds.length) return setError("Select at least one player.");
+    if (!fields.length) return setError("Select at least one data field.");
+    if (!from || !to || from > to) return setError("Choose a valid date range.");
+    const task = {
+      id: uid(), name: name.trim() || `${selectedClubs.map((c) => c.name).join(", ")} · ${from} to ${to}`,
+      status: "queued", createdAt: new Date().toISOString(), from, to, fields,
+      clubs: selectedClubs.map((c) => ({ id: c.id, name: c.name })),
+      players: selectedPlayers.map((p) => ({ id: p.id, name: p.name, clubId: p.clubId, clubName: p.clubName })),
+      note: note.trim(),
+    };
+    const next = [task, ...tasks];
+    setTasks(next);
+    await store.set(DATA_TASKS_KEY, JSON.stringify(next));
+    setName(""); setNote("");
+  };
+
+  if (!loaded) return <div style={{ padding: 40, color: C.mute }}>Loading data tasks…</div>;
+
+  return (
+    <div>
+      <div style={{ padding: "16px 26px 14px", borderBottom: `2px solid ${C.line}`, background: C.paper }}>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 20 }}>ClubGG data tasks</div>
+        <div style={{ color: C.mute, fontSize: 12.5, marginTop: 3 }}>Choose exactly what Ledger Pilot should collect. Tasks are saved here ready for the ClubGG collector.</div>
+      </div>
+      <div style={{ padding: "20px 26px 60px", maxWidth: 1180, margin: "0 auto" }}>
+        {error && <div style={{ background: "var(--errBg)", color: C.red, padding: "9px 13px", borderRadius: 6, marginBottom: 14, fontSize: 13 }}>{error}</div>}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(300px, .65fr)", gap: 14, alignItems: "start", marginBottom: 18 }}>
+          <div>
+            <div style={{ marginBottom: 14 }}><Card title="1 · Clubs">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {agent.clubs.map((c) => {
+                  const on = clubIds.includes(c.id);
+                  return <button key={c.id} onClick={() => toggleClub(c.id)} style={{ border: `1px solid ${on ? C.goldDark : C.line}`, background: on ? C.gold : C.surface, color: on ? "var(--onGold)" : C.ink, borderRadius: 16, padding: "5px 11px", cursor: "pointer", fontSize: 12.5, fontWeight: on ? 700 : 500 }}>{c.name} <span style={{ opacity: .7 }}>· {c.players.length}</span></button>;
+                })}
+              </div>
+            </Card></div>
+
+            <div style={{ marginBottom: 14 }}><Card title="2 · Players" right={availablePlayers.length > 0 && <span style={{ display: "flex", gap: 7 }}><Btn tone="ghost" small onClick={() => setPlayerIds(availablePlayers.map((p) => p.id))}>Select all</Btn><Btn tone="ghost" small onClick={() => setPlayerIds([])}>Clear</Btn></span>}>
+              {!clubIds.length && <div style={{ color: C.mute, fontSize: 13 }}>Select one or more clubs first.</div>}
+              {!!clubIds.length && !availablePlayers.length && <div style={{ color: C.mute, fontSize: 13 }}>These clubs have no players configured yet. Add their rosters under My Clubs → Clubs & deals.</div>}
+              {selectedClubs.map((club) => (
+                <div key={club.id} style={{ marginBottom: 9 }}>
+                  <div style={{ color: C.goldDark, fontSize: 11, fontWeight: 800, letterSpacing: ".07em", textTransform: "uppercase", marginBottom: 5 }}>{club.name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 5 }}>
+                    {club.players.map((p) => <label key={p.id} style={{ display: "flex", gap: 7, alignItems: "center", background: C.rowAlt, borderRadius: 6, padding: "6px 9px", fontSize: 12.5, cursor: "pointer" }}><input type="checkbox" checked={playerIds.includes(p.id)} onChange={() => setPlayerIds(playerIds.includes(p.id) ? playerIds.filter((x) => x !== p.id) : [...playerIds, p.id])} />{p.name}</label>)}
+                  </div>
+                </div>
+              ))}
+            </Card></div>
+
+            <Card title="3 · Time period and data">
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                {[['today','Today'],['past7','Past 7 days'],['custom','Custom']].map(([v,l]) => <button key={v} onClick={() => chooseRange(v)} style={{ border: `1px solid ${range === v ? C.goldDark : C.line}`, background: range === v ? C.gold : C.surface, color: range === v ? "var(--onGold)" : C.ink, borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12.5, fontWeight: 700 }}>{l}</button>)}
+              </div>
+              <div style={{ display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                <span style={{ color: C.mute, fontSize: 12 }}>From</span><input type="date" value={from} onChange={(e) => { setRange("custom"); setFrom(e.target.value); }} style={inputS} />
+                <span style={{ color: C.mute, fontSize: 12 }}>to</span><input type="date" value={to} onChange={(e) => { setRange("custom"); setTo(e.target.value); }} style={inputS} />
+              </div>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>{TASK_FIELDS.map(([k, label]) => <label key={k} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, cursor: "pointer" }}><input type="checkbox" checked={fields.includes(k)} onChange={() => setFields(fields.includes(k) ? fields.filter((x) => x !== k) : [...fields, k])} />{label}</label>)}</div>
+            </Card>
+          </div>
+
+          <div style={{ position: "sticky", top: 14 }}><Card title="Task summary">
+            <input placeholder="Task name (optional)" value={name} onChange={(e) => setName(e.target.value)} style={{ ...inputS, width: "100%", boxSizing: "border-box", marginBottom: 10 }} />
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+              <div style={{ display: "flex" }}><span style={{ color: C.mute }}>Clubs</span><b style={{ marginLeft: "auto" }}>{clubIds.length}</b></div>
+              <div style={{ display: "flex" }}><span style={{ color: C.mute }}>Players</span><b style={{ marginLeft: "auto" }}>{playerIds.length}</b></div>
+              <div style={{ display: "flex" }}><span style={{ color: C.mute }}>Period</span><b style={{ marginLeft: "auto" }}>{from && to ? `${from} → ${to}` : "—"}</b></div>
+              <div style={{ display: "flex" }}><span style={{ color: C.mute }}>Read</span><b style={{ marginLeft: "auto" }}>{fields.map((k) => TASK_FIELDS.find(([x]) => x === k)?.[1]).join(", ") || "—"}</b></div>
+            </div>
+            <textarea placeholder="Internal note (optional)" value={note} onChange={(e) => setNote(e.target.value)} rows={3} style={{ ...inputS, width: "100%", boxSizing: "border-box", resize: "vertical", margin: "10px 0" }} />
+            <Btn tone="gold" onClick={saveTask}>Create collection task</Btn>
+          </Card></div>
+        </div>
+
+        <Card title={`Collection queue · ${tasks.length}`}>
+          {!tasks.length && <div style={{ color: C.mute, fontSize: 13 }}>No tasks yet. Create one above and it will appear here ready for the collector.</div>}
+          {tasks.map((task) => <div key={task.id} style={{ display: "flex", gap: 12, alignItems: "center", borderTop: `1px solid ${C.line}`, padding: "10px 0", flexWrap: "wrap" }}>
+            <div style={{ minWidth: 230, flex: 1 }}><div style={{ fontWeight: 700, fontSize: 14 }}>{task.name}</div><div style={{ color: C.mute, fontSize: 11.5 }}>{task.clubs.map((c) => c.name).join(", ")} · {task.players.length} players</div></div>
+            <div style={{ fontSize: 12.5, color: C.mute }}>{task.from} → {task.to}</div>
+            <Pill tone="gold">queued</Pill>
+          </div>)}
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 // ════════════════════════════════════════════════════════════════
